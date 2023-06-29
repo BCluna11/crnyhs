@@ -1,0 +1,274 @@
+library(shiny)
+
+# Define UI
+ui <- fluidPage(
+  tags$head(
+    tags$style(HTML("
+      body {
+        background-color: #f2f2f2;
+        font-family: Arial, sans-serif;
+      }
+
+      #header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      #app-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        text-decoration: none;
+      }
+
+      #login-link,
+      #signup-link {
+        font-size: 16px;
+        font-weight: bold;
+        color: #333;
+        text-decoration: none;
+        padding: 5px;
+        border-radius: 5px;
+        transition: background-color 0.3s;
+      }
+
+      #login-link:hover,
+      #signup-link:hover {
+        background-color: #eee;
+      }
+
+      #search-bar-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        padding-top: 50px;
+      }
+
+      #app-header {
+        font-size: 32px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      .search-container {
+        position: relative;
+        max-width: 400px;
+        margin-bottom: 20px;
+      }
+
+      .search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+      }
+
+      .search-history {
+        margin-top: 10px;
+        color: #999;
+      }
+
+      .search-history-item {
+        cursor: pointer;
+        padding: 5px;
+        transition: background-color 0.3s;
+      }
+
+      .search-history-item:hover {
+        background-color: #f2f2f2;
+      }
+
+      #search-results {
+        font-weight: bold;
+        margin-top: 20px;
+      }
+
+      .user-boxes {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+
+      .user-box {
+        width: 200px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #f2f2f2;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .user-box-label {
+        font-size: 16px;
+        font-weight: bold;
+        margin-right: 10px;
+      }
+    "))
+  ),
+  div(
+    id = "header",
+    a(id = "app-title", href = "#", style = "color: #428bca;", "Gallagher's List"),
+    div(
+      a(id = "login-link", href = "#", onclick = "openLogin()", style = "background-color: #428bca; color: #fff;", "Login"),
+      a(id = "signup-link", href = "#", onclick = "openSignup()", style = "background-color: #428bca; color: #fff;", "Sign Up")
+    )
+  ),
+  div(
+    id = "search-bar-container",
+    div(id = "app-header", HTML("<b>Gallagher's List</b>")),
+    div(class = "user-boxes",
+        a(id = "contractor-link", href = "#", onclick = "openContractor()", "Are you a contractor?"),
+        a(id = "looking-for-work-link", href = "#", onclick = "openLookingForWork()", "Are you looking for work?")
+    ),
+    div(class = "search-container",
+        tags$i(class = "search-icon fas fa-search"),
+        textInput("search_term", "Enter a term to search:")
+    ),
+    uiOutput("search_history"),
+    div(id = "search-results",
+        uiOutput("formatted_results")
+    )
+  )
+)
+
+# Define server
+server <- function(input, output, session) {
+  search_data <- data.frame(
+    Name = c(
+      "Brian Cortes",
+      "John Smith",
+      "Jane Doe",
+      "Alexander Balbuena",
+      "Emily Johnson",
+      "Michael Davis",
+      "Sophia Thompson",
+      "Oliver Anderson",
+      "Emma Lee",
+      "William Martin",
+      "Zara Adams",
+      "Victor Brown",
+      "Lily Garcia",
+      "Daniel Wilson",
+      "Grace Clark",
+      "Henry Green",
+      "Ava Martinez",
+      "Jack Johnson",
+      "Olivia Anderson",
+      "Lucas Lee",
+      "Sophia Martin",
+      "Noah Thompson",
+      "Isabella Davis",
+      "James Wilson",
+      "Mia Johnson",
+      "Benjamin Smith",
+      "Charlotte Martinez",
+      "William Taylor",
+      "Emily Adams",
+      "Alexander Johnson"
+    ),
+    Skills = c(
+      "Programming, Data Analysis",
+      "Project Management",
+      "Design",
+      "Machine Learning",
+      "Data Science, Statistics",
+      "Web Development",
+      "Graphic Design",
+      "Data Analysis, Machine Learning",
+      "UX/UI Design",
+      "Software Engineering",
+      "Data Analysis, Project Management",
+      "Machine Learning, Design",
+      "Web Development, Graphic Design",
+      "Data Science, Programming",
+      "UX/UI Design, Project Management",
+      "Software Engineering, Web Development",
+      "Data Analysis, Design",
+      "Programming, Graphic Design",
+      "Machine Learning, Data Analysis",
+      "Web Development, Project Management",
+      "Design, Data Science",
+      "Project Management, Software Engineering",
+      "Graphic Design, Programming",
+      "Data Analysis, Web Development",
+      "Machine Learning, Design",
+      "Programming, Project Management",
+      "Data Science, Web Development",
+      "UX/UI Design, Graphic Design",
+      "Software Engineering, Data Analysis",
+      "Project Management, Graphic Design"
+    )
+  )
+  
+  # Generate additional random people
+  set.seed(42)
+  random_people <- data.frame(
+    Name = replicate(20, paste0(sample(LETTERS, 5), collapse = "")),
+    Skills = replicate(20, paste0(
+      sample(
+        c("Data Analysis", "Design", "Web Development", "Machine Learning", "Project Management"),
+        size = sample(1:4, 1),
+        replace = TRUE
+      ),
+      collapse = ", "
+    ))
+  )
+  
+  search_data <- rbind(search_data, random_people)
+  
+  max_history <- 5  # Maximum number of search history items to display
+  
+  search_history <- reactiveValues(history = character(0))
+  
+  observeEvent(input$search_term, {
+    if (!is.null(input$search_term) && input$search_term != "") {
+      search_history$history <- c(input$search_term, search_history$history)
+      search_history$history <- search_history$history[1:max_history]  # Limit the history to the maximum number
+    }
+  })
+  
+  output$search_history <- renderUI({
+    if (length(search_history$history) > 0 && !is.null(input$search_term) && input$search_term != "") {
+      history_items <- lapply(search_history$history, function(term) {
+        tags$div(
+          class = "search-history-item",
+          onclick = paste0("fillInput('search_term','", term, "')"),
+          term
+        )
+      })
+      return(tags$div(class = "search-history", history_items))
+    } else {
+      return(NULL)
+    }
+  })
+  
+  output$formatted_results <- renderUI({
+    searchTerm <- input$search_term
+    if (!is.null(searchTerm) && searchTerm != "") {
+      matches <- grep(searchTerm, search_data$Name, ignore.case = TRUE)
+      if (length(matches) > 0) {
+        result_list <- lapply(matches, function(match) {
+          list(
+            h4(search_data$Name[match]),
+            p(search_data$Skills[match])
+          )
+        })
+        return(result_list)
+      } else {
+        return("No results found.")
+      }
+    }
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
